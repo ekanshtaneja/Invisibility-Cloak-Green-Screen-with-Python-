@@ -1,0 +1,76 @@
+import cv2
+import numpy as np
+import time
+
+# Open the webcam
+cap = cv2.VideoCapture(0)
+
+# ✅ Check if the webcam is available
+if not cap.isOpened():
+    print("❌ Error: Camera not found!")
+    exit()
+
+# Wait for camera to warm up
+time.sleep(2)
+
+print("📸 Capturing background... Please move out of the frame.")
+background = None
+
+# Capture static background
+for i in range(60):
+    ret, frame = cap.read()
+    if not ret or frame is None:
+        print(f"⚠️ Warning: Frame {i+1} not captured. Retrying...")
+        continue
+
+    frame = np.flip(frame, axis=1)
+    background = frame.copy()
+
+    # Display background capture status
+    display_frame = background.copy()
+    cv2.putText(display_frame, "Capturing Background - Please Stay Out",
+                (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+    cv2.imshow("Invisibility Cloak Setup - Ekansh Taneja", display_frame)
+    cv2.waitKey(30)
+
+print("✅ Background captured. Cloak mode is now active!")
+
+while True:
+    ret, frame = cap.read()
+    if not ret or frame is None:
+        print("❌ Error: Failed to read from webcam.")
+        break
+
+    frame = np.flip(frame, axis=1)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # Define green color range
+    lower_green = np.array([35, 40, 40])
+    upper_green = np.array([90, 255, 255])
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+
+    # Clean the mask using morphological operations
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, np.ones((3, 3), np.uint8))
+    mask_inv = cv2.bitwise_not(mask)
+
+    # Generate output images
+    cloak_area = cv2.bitwise_and(background, background, mask=mask)
+    visible_area = cv2.bitwise_and(frame, frame, mask=mask_inv)
+    final_output = cv2.addWeighted(cloak_area, 1, visible_area, 1, 0)
+
+    # Add label
+    cv2.putText(final_output, "Invisibility Cloak Active - Press 'Q' to Quit",
+                (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+    # Display the result
+    cv2.imshow("Invisibility Cloak - By Ekansh Taneja", final_output)
+
+    # Exit on 'q' key
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        print("👋 Exiting cloak mode. Have a magical day!")
+        break
+
+# Cleanup
+cap.release()
+cv2.destroyAllWindows()
